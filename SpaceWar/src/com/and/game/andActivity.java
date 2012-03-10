@@ -12,6 +12,7 @@ import org.anddev.andengine.engine.camera.hud.controls.AnalogOnScreenControl.IAn
 import org.anddev.andengine.engine.camera.hud.controls.BaseOnScreenControl;
 import org.anddev.andengine.engine.camera.hud.controls.BaseOnScreenControl.IOnScreenControlListener;
 import org.anddev.andengine.engine.camera.hud.controls.DigitalOnScreenControl;
+import org.anddev.andengine.engine.handler.IUpdateHandler;
 import org.anddev.andengine.engine.handler.physics.PhysicsHandler;
 import org.anddev.andengine.engine.handler.timer.ITimerCallback;
 import org.anddev.andengine.engine.handler.timer.TimerHandler;
@@ -107,14 +108,32 @@ public class andActivity extends BaseGameActivity  {
 			
 			@Override
 			public void onControlChange(BaseOnScreenControl pBaseOnScreenControl,
-					float pValueX, float pValueY) {	
+					float pValueX, float pValueY) {
+			
+				if(pValueX < 0 && player.getX() <= 5)
+				{
+					pValueX = 0;
+				}
+				if(pValueY < 0 && player.getY() <= 5)
+				{
+					pValueY = 0;
+				}
+				if(pValueY > 0 && player.getY() >= mCamera.getHeight()- player.getHeight()-5)
+				{
+					pValueY = 0;
+				}
+				if(pValueX > 0 && player.getX() >= mCamera.getWidth()- player.getWidth()-5)
+				{
+					pValueX = 0;
+				}
 				physicsHandler.setVelocity(pValueX * 200, pValueY * 200);
-				System.out.println(player.getX() +">>>>>>>>>>" + player.getY());
+				
+				
+		
 			}
 			@Override
 			public void onControlClick(AnalogOnScreenControl pAnalogOnScreenControl) {
-//                player.registerEntityModifier(new SequenceEntityModifier(new ScaleModifier(
-//                		0.25f, 1, 1.5f), new ScaleModifier(0.25f, 1.5f, 1)));	
+	
 			}
 		};
 		final AnalogOnScreenControl analogOnScreenControl = new AnalogOnScreenControl(0f, 
@@ -133,6 +152,8 @@ public class andActivity extends BaseGameActivity  {
 		enemies = new LinkedList();
 		enemiesToBeAdded = new LinkedList();
 		createEnemiesTimeHandler(); // create random enemies 
+		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
+		//mainScene.registerUpdateHandler(detectPlayerBorder);
 		return mainScene;
 	}
 
@@ -176,7 +197,7 @@ public class andActivity extends BaseGameActivity  {
     }
     public void deleteEnemy(final Sprite sprite, Iterator it)
     {
-    	// run it in different thread
+    	// run it in different thread to not to interrupt the work of the engine
     	runOnUpdateThread(new Runnable() {
 			
 			@Override
@@ -187,5 +208,45 @@ public class andActivity extends BaseGameActivity  {
 		});
     	it.remove();
     }
+    // detect when Sprite gets out of screen
+    IUpdateHandler detectSpriteOutOfScreen = new IUpdateHandler() {
+		
+		@Override
+		public void reset() {
+		}
+		@Override
+		public void onUpdate(float pSecondsElapsed) {
+			Iterator<Sprite> it = enemies.iterator();
+			Sprite enemy;
+			while(it.hasNext())
+			{
+				enemy = it.next();
+				if(enemy.getX() <= -enemy.getWidth())
+				{
+					System.out.println("heeeeeeeeh Sprite deleted");
+					deleteEnemy(enemy, it);
+				}
+			}
+			enemies.addAll(enemiesToBeAdded);
+			enemiesToBeAdded.clear();	
+		}
+	};
+	IUpdateHandler detectPlayerBorder = new IUpdateHandler() {
+		
+		@Override
+		public void reset() {
+			
+			
+		}
+		
+		@Override
+		public void onUpdate(float pSecondsElapsed) {
+//			if(player.getX() <= - player.getWidth())
+//			{
+//				player.setPosition(player.getWidth()/2, player.getY());
+//			}
+			
+		}
+	};
   
 }
