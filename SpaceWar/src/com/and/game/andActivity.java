@@ -55,7 +55,6 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion trBtnTexture;
     private TextureRegion oBtnTexture;
     private TextureRegion sqBtnTexture;
-    private ArrayList<Sprite> targets = new ArrayList<Sprite>();
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
     private AnimatedSprite player;
@@ -72,7 +71,6 @@ public class andActivity extends BaseGameActivity {
 				         new RatioResolutionPolicy(mCamera.getWidth(), mCamera.getHeight()),
 				         mCamera).setNeedsMusic(true).setNeedsSound(true));
 	}
-
 	@Override
 	public void onLoadResources() {
 	
@@ -97,6 +95,12 @@ public class andActivity extends BaseGameActivity {
 				fireControlTexture, this, "xPS.png",0,0);
 	oBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 			fireControlTexture, this, "oPS.png",128,0);
+	trBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+			fireControlTexture, this, "trPS.png",256,0);
+	sqBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+			fireControlTexture, this, "squarePS.png",384,0);
+	
+	
 		///////////////////////////////////////////////////////////
 	    mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
 	}
@@ -106,107 +110,13 @@ public class andActivity extends BaseGameActivity {
 		mEngine.registerUpdateHandler(new FPSLogger());
 		mainScene = new Scene();
 		mainScene.setBackground(new ColorBackground(0.09f, 0.6f, 0.8f));
-		int playerX = playTextureRegion.getWidth() / 2;
-		int playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
-		
-		player = new AnimatedSprite(playerX, playerY, playTextureRegion);
-		player.animate(new long[] { 100, 100 }, 1, 2, true);
-		
-		xBtn = new Sprite(mCamera.getWidth()-2*xBtnTexture.getWidth(),
-				mCamera.getHeight()-xBtnTexture.getHeight(), xBtnTexture){
-		      @Override
-              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-                      runOnUpdateThread(new Runnable() {
-                      @Override
-                      public void run() {
-                    	  System.out.println("mmmmmmmmmmmmmmmmmmmmmmmmmm");
-                           player.stopAnimation();
-                      }
-              });
-                      return false;
-              }
-			
-		};
-		oBtn = new Sprite(mCamera.getWidth()-xBtnTexture.getWidth(),
-				mCamera.getHeight()-2*xBtnTexture.getHeight(), oBtnTexture){
-			
-		      @Override
-              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-                      runOnUpdateThread(new Runnable() {
-                      @Override
-                      public void run() {
-                    	  System.out.println("mmmmmmmmmmmmmmmmmmmmmmmmmm");
-                           player.stopAnimation();
-                      }
-              });
-                      return false;
-              }
-			
-		};
-		 mainScene.registerTouchArea(xBtn);
-		 mainScene.registerTouchArea(oBtn);
-		 mainScene.setTouchAreaBindingEnabled(true);
-		////////// controller/////////////////////
+		AddThePlayer();
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
-		///////////////////////////////////
-		
-		mainScene.attachChild(player);
-		
-		///////////////////// controller //////////////
-		IAnalogOnScreenControlListener IanalogController= new IAnalogOnScreenControlListener() {
-			
-			@Override
-			public void onControlChange(BaseOnScreenControl pBaseOnScreenControl,
-					float pValueX, float pValueY) {
-			
-				if(pValueX < 0 && player.getX() <= 5)
-				{
-					pValueX = 0;
-				}
-				if(pValueY < 0 && player.getY() <= 5)
-				{
-					pValueY = 0;
-				}
-				if(pValueY > 0 && player.getY() >= mCamera.getHeight()- player.getHeight()-5)
-				{
-					pValueY = 0;
-				}
-				if(pValueX > 0 && player.getX() >= mCamera.getWidth()- player.getWidth()-5)
-				{
-					pValueX = 0;
-				}
-				physicsHandler.setVelocity(pValueX * 200, pValueY * 200);
-				
-				
-		
-			}
-			@Override
-			public void onControlClick(AnalogOnScreenControl pAnalogOnScreenControl) {
-	
-			}
-		};
-		final AnalogOnScreenControl analogOnScreenControl = new AnalogOnScreenControl(0f, 
-				mCamera.getHeight() - onScreenControlBase.getHeight(), mCamera, 
-				onScreenControlBase, onScreenControlKnob, 0.1f, 200, IanalogController);
-		analogOnScreenControl.getControlBase().setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-        analogOnScreenControl.getControlBase().setAlpha(0.5f);
-        analogOnScreenControl.getControlBase().setScaleCenter(0, 64);
-        analogOnScreenControl.getControlBase().setScale(1f);
-        analogOnScreenControl.getControlKnob().setScale(1f);
-        analogOnScreenControl.refreshControlKnobPosition();
-
-        mainScene.setChildScene(analogOnScreenControl);
-
-		/////////////////////////////////////////////
-		enemies = new LinkedList();
-		enemiesToBeAdded = new LinkedList();
+		AddTheFireButtons();
+		AddTheAnalogControler(physicsHandler);
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
-	    mainScene.attachChild(xBtn);
-	    mainScene.attachChild(oBtn);
 		return mainScene;
 	}
 
@@ -236,6 +146,8 @@ public class andActivity extends BaseGameActivity {
     // create new enemies periodically
     public void createEnemiesTimeHandler()
     {
+    	enemies = new LinkedList();
+		enemiesToBeAdded = new LinkedList();
     	TimerHandler spriteTimesHandler;
     	float delay = 1f;
     	spriteTimesHandler = new TimerHandler(delay, true,new ITimerCallback() {
@@ -285,5 +197,150 @@ public class andActivity extends BaseGameActivity {
 		}
 	};
 
+	public void AddTheAnalogControler(final PhysicsHandler physicsHandler)
+	{
+			IAnalogOnScreenControlListener IanalogController= new IAnalogOnScreenControlListener() {
+			
+			@Override
+			public void onControlChange(BaseOnScreenControl pBaseOnScreenControl,
+					float pValueX, float pValueY) {
+			
+				if(pValueX < 0 && player.getX() <= 5)
+				{
+					pValueX = 0;
+				}
+				if(pValueY < 0 && player.getY() <= 5)
+				{
+					pValueY = 0;
+				}
+				if(pValueY > 0 && player.getY() >= mCamera.getHeight()- player.getHeight()-5)
+				{
+					pValueY = 0;
+				}
+				if(pValueX > 0 && player.getX() >= mCamera.getWidth()- player.getWidth()-5)
+				{
+					pValueX = 0;
+				}
+				physicsHandler.setVelocity(pValueX * 200, pValueY * 200);
+			}
+			@Override
+			public void onControlClick(AnalogOnScreenControl pAnalogOnScreenControl) {
+	
+			}
+		};
+		final AnalogOnScreenControl analogOnScreenControl = new AnalogOnScreenControl(0f, 
+				mCamera.getHeight() - onScreenControlBase.getHeight(), mCamera, 
+				onScreenControlBase, onScreenControlKnob, 0.1f, 200, IanalogController);
+		analogOnScreenControl.getControlBase().setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+        analogOnScreenControl.getControlBase().setAlpha(0.5f);
+        analogOnScreenControl.getControlBase().setScaleCenter(0, 64);
+        analogOnScreenControl.getControlBase().setScale(1f);
+        analogOnScreenControl.getControlKnob().setScale(1f);
+        analogOnScreenControl.refreshControlKnobPosition();
+
+        mainScene.setChildScene(analogOnScreenControl);
+		
+	}
+	public void AddThePlayer()
+	{
+		
+		int playerX = playTextureRegion.getWidth() / 2;
+		int playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
+		player = new AnimatedSprite(playerX, playerY, playTextureRegion);
+		player.animate(new long[] { 100, 100 }, 1, 2, true);
+		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
+		player.registerUpdateHandler(physicsHandler);		
+		mainScene.attachChild(player);
+	}
+	public void AddTheFireButtons()
+	{		
+		AddTheXButton();
+		AddTheOButton();
+		AddTheTrButton();
+		AddTheSquareButton();
+		mainScene.setTouchAreaBindingEnabled(true);
+	}
+	public void AddTheXButton()
+	{
+		xBtn = new Sprite(mCamera.getWidth()-2*xBtnTexture.getWidth(),
+				mCamera.getHeight()-xBtnTexture.getHeight(), xBtnTexture){
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {
+                    	 
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+			
+		};
+		mainScene.registerTouchArea(xBtn);
+		mainScene.attachChild(xBtn);
+	}
+	public void AddTheOButton()
+	{
+		oBtn = new Sprite(mCamera.getWidth()-xBtnTexture.getWidth(),
+				mCamera.getHeight()-1.5f*xBtnTexture.getHeight(), oBtnTexture){
+			
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {     	  
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+		};
+		mainScene.registerTouchArea(oBtn);
+	    mainScene.attachChild(oBtn);
+	}
+	public void AddTheTrButton()
+	{
+		trBtn = new Sprite(mCamera.getWidth()-2*xBtnTexture.getWidth(),
+				mCamera.getHeight()-2f*xBtnTexture.getHeight(), trBtnTexture){
+			
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {     	  
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+		};
+		mainScene.registerTouchArea(trBtn);
+	    mainScene.attachChild(trBtn);	
+	}
+	public void AddTheSquareButton()
+	{
+		sqBtn = new Sprite(mCamera.getWidth()-3*xBtnTexture.getWidth(),
+				mCamera.getHeight()-1.5f*xBtnTexture.getHeight(), sqBtnTexture){
+			
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {     	  
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+		};
+		mainScene.registerTouchArea(sqBtn);
+	    mainScene.attachChild(sqBtn);
+		
+	}
   
 }
