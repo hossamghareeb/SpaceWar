@@ -28,6 +28,7 @@ import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.util.FPSLogger;
+import org.anddev.andengine.input.touch.TouchEvent;
 import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlasTextureRegionFactory;
@@ -38,7 +39,7 @@ import org.anddev.andengine.ui.activity.BaseGameActivity;
 import android.view.Display;
 import javax.microedition.khronos.opengles.GL10;
 
-public class andActivity extends BaseGameActivity  {
+public class andActivity extends BaseGameActivity {
 	//private
 	private Camera mCamera;
 	private Scene mainScene;
@@ -47,12 +48,21 @@ public class andActivity extends BaseGameActivity  {
     private TextureRegion enemyTextureRegion;
     // controller
     private BitmapTextureAtlas onScreenControlTexture;
+    private BitmapTextureAtlas fireControlTexture;
     private TextureRegion onScreenControlBase;
-    private TextureRegion onScreenControlKnob;    
+    private TextureRegion onScreenControlKnob;
+    private TextureRegion xBtnTexture;
+    private TextureRegion trBtnTexture;
+    private TextureRegion oBtnTexture;
+    private TextureRegion sqBtnTexture;
     private ArrayList<Sprite> targets = new ArrayList<Sprite>();
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
     private AnimatedSprite player;
+    private Sprite xBtn;
+    private Sprite trBtn;
+    private Sprite oBtn;
+    private Sprite sqBtn;
 	@Override
 	public Engine onLoadEngine() {
 		final Display display = getWindowManager().getDefaultDisplay();
@@ -69,20 +79,26 @@ public class andActivity extends BaseGameActivity  {
 		bitmap = new BitmapTextureAtlas(512, 512, // Resolution
 				TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		// for controller
-     	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);    	
+     	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	fireControlTexture = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
 		playTextureRegion.setFlippedHorizontal(true);
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
+		
 		///////////////// for controller /////////
 		onScreenControlBase = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				onScreenControlTexture, this, "onscreen_control_base.png",0,0);
 		onScreenControlKnob = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				onScreenControlTexture, this, "onscreen_control_knob.png",128,0);
+	xBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				fireControlTexture, this, "xPS.png",0,0);
+	oBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+			fireControlTexture, this, "oPS.png",128,0);
 		///////////////////////////////////////////////////////////
-	    mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture);	
+	    mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
 	}
 
 	@Override
@@ -96,6 +112,42 @@ public class andActivity extends BaseGameActivity  {
 		player = new AnimatedSprite(playerX, playerY, playTextureRegion);
 		player.animate(new long[] { 100, 100 }, 1, 2, true);
 		
+		xBtn = new Sprite(mCamera.getWidth()-2*xBtnTexture.getWidth(),
+				mCamera.getHeight()-xBtnTexture.getHeight(), xBtnTexture){
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {
+                    	  System.out.println("mmmmmmmmmmmmmmmmmmmmmmmmmm");
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+			
+		};
+		oBtn = new Sprite(mCamera.getWidth()-xBtnTexture.getWidth(),
+				mCamera.getHeight()-2*xBtnTexture.getHeight(), oBtnTexture){
+			
+		      @Override
+              public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+            		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                      runOnUpdateThread(new Runnable() {
+                      @Override
+                      public void run() {
+                    	  System.out.println("mmmmmmmmmmmmmmmmmmmmmmmmmm");
+                           player.stopAnimation();
+                      }
+              });
+                      return false;
+              }
+			
+		};
+		 mainScene.registerTouchArea(xBtn);
+		 mainScene.registerTouchArea(oBtn);
+		 mainScene.setTouchAreaBindingEnabled(true);
 		////////// controller/////////////////////
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
@@ -153,7 +205,8 @@ public class andActivity extends BaseGameActivity  {
 		enemiesToBeAdded = new LinkedList();
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
-		//mainScene.registerUpdateHandler(detectPlayerBorder);
+	    mainScene.attachChild(xBtn);
+	    mainScene.attachChild(oBtn);
 		return mainScene;
 	}
 
@@ -231,22 +284,6 @@ public class andActivity extends BaseGameActivity  {
 			enemiesToBeAdded.clear();	
 		}
 	};
-	IUpdateHandler detectPlayerBorder = new IUpdateHandler() {
-		
-		@Override
-		public void reset() {
-			
-			
-		}
-		
-		@Override
-		public void onUpdate(float pSecondsElapsed) {
-//			if(player.getX() <= - player.getWidth())
-//			{
-//				player.setPosition(player.getWidth()/2, player.getY());
-//			}
-			
-		}
-	};
+
   
 }
