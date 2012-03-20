@@ -18,7 +18,7 @@ public class GameSplash extends BaseSplashActivity {
 	@Override
 	protected ScreenOrientation getScreenOrientation() {
 		
-		return ScreenOrientation.PORTRAIT;
+		return ScreenOrientation.LANDSCAPE;
 	}
 
 	@Override

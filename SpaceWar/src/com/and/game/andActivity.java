@@ -55,6 +55,7 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion trBtnTexture;
     private TextureRegion oBtnTexture;
     private TextureRegion sqBtnTexture;
+    private TextureRegion bulletTexture;
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
     private AnimatedSprite player;
@@ -62,6 +63,10 @@ public class andActivity extends BaseGameActivity {
     private Sprite trBtn;
     private Sprite oBtn;
     private Sprite sqBtn;
+    static int currentSpriteX = 0;
+    static int currentSpriteY = 0;
+    // the pool
+    private SpritesPool SpritePool;
 	@Override
 	public Engine onLoadEngine() {
 		final Display display = getWindowManager().getDefaultDisplay();
@@ -85,6 +90,10 @@ public class andActivity extends BaseGameActivity {
 		playTextureRegion.setFlippedHorizontal(true);
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
+		bulletTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset
+		(bitmap, this, "Projectile.png",256,0);
+		/////the pool
+		SpritePool = new SpritesPool(enemyTextureRegion);
 		
 		///////////////// for controller /////////
 		onScreenControlBase = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
@@ -99,8 +108,6 @@ public class andActivity extends BaseGameActivity {
 			fireControlTexture, this, "trPS.png",256,0);
 	sqBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 			fireControlTexture, this, "squarePS.png",384,0);
-	
-	
 		///////////////////////////////////////////////////////////
 	    mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
 	}
@@ -133,7 +140,9 @@ public class andActivity extends BaseGameActivity {
     	int maxY = (int)mCamera.getHeight() - minY;
     	int rangY = maxY - minY;
     	int y = rand.nextInt(rangY) + minY; //  random y in range
-    	Sprite target = new Sprite(x, y, enemyTextureRegion.deepCopy());
+    	currentSpriteX = x;
+    	currentSpriteY = y;
+    	Sprite target = SpritePool.obtainPoolItem();  // get Sprite from the pool
     	mainScene.attachChild(target);
     	int minSpeed = 2;
     	int maxSpeed = 4;
@@ -142,6 +151,14 @@ public class andActivity extends BaseGameActivity {
     	target.registerEntityModifier(mov.deepCopy());
     	enemiesToBeAdded.add(target);
     	
+    }
+    public void AddBullet()
+    {
+    	Sprite bullet = new Sprite(player.getX()+ player.getWidth(), player.getY()+ player.getHeight() / 2, bulletTexture.deepCopy());
+    	mainScene.attachChild(bullet);
+    	int speed = 3;
+    	MoveXModifier mov = new MoveXModifier(speed, bullet.getX(), mCamera.getWidth());
+    	bullet.registerEntityModifier(mov.deepCopy());
     }
     // create new enemies periodically
     public void createEnemiesTimeHandler()
@@ -160,19 +177,7 @@ public class andActivity extends BaseGameActivity {
 		});
     	getEngine().registerUpdateHandler(spriteTimesHandler);
     }
-    public void deleteEnemy(final Sprite sprite, Iterator it)
-    {
-    	// run it in different thread to not to interrupt the work of the engine
-    	runOnUpdateThread(new Runnable() {
-			
-			@Override
-			public void run() {
-			 mainScene.detachChild(sprite);
-				
-			}
-		});
-    	it.remove();
-    }
+   
     // detect when Sprite gets out of screen
     IUpdateHandler detectSpriteOutOfScreen = new IUpdateHandler() {
 		
@@ -185,11 +190,11 @@ public class andActivity extends BaseGameActivity {
 			Sprite enemy;
 			while(it.hasNext())
 			{
-				enemy = it.next();
+				enemy = it.next(); // enemy to be deleted of it is out of screen
 				if(enemy.getX() <= -enemy.getWidth())
 				{
-					System.out.println("heeeeeeeeh Sprite deleted");
-					deleteEnemy(enemy, it);
+					SpritePool.recyclePoolItem(enemy);
+					it.remove();
 				}
 			}
 			enemies.addAll(enemiesToBeAdded);
@@ -271,7 +276,7 @@ public class andActivity extends BaseGameActivity {
                       @Override
                       public void run() {
                     	 
-                           player.stopAnimation();
+                          AddBullet();
                       }
               });
                       return false;
