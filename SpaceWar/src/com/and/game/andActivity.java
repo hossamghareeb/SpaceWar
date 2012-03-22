@@ -1,10 +1,15 @@
 package com.and.game;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
 
+import org.anddev.andengine.audio.music.Music;
+import org.anddev.andengine.audio.music.MusicFactory;
+import org.anddev.andengine.audio.sound.Sound;
+import org.anddev.andengine.audio.sound.SoundFactory;
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
 import org.anddev.andengine.engine.camera.hud.controls.AnalogOnScreenControl;
@@ -25,6 +30,7 @@ import org.anddev.andengine.entity.modifier.ScaleModifier;
 import org.anddev.andengine.entity.modifier.SequenceEntityModifier;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
+import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.util.FPSLogger;
@@ -56,12 +62,20 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion oBtnTexture;
     private TextureRegion sqBtnTexture;
     private TextureRegion bulletTexture;
+    private TextureRegion BgTextureRegion;
     
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
     private LinkedList bullets;
     private LinkedList bulletsToBeAdded;
     private AnimatedSprite player;
+    
+    private Sprite SBG;
+	private SpriteBackground BG;
+	
+	private Sound shootSound;
+	private Music bgMusic;
+    
     private Sprite xBtn, trBtn, oBtn, sqBtn;
     
     
@@ -84,19 +98,24 @@ public class andActivity extends BaseGameActivity {
 	@Override
 	public void onLoadResources() {
 	
-		bitmap = new BitmapTextureAtlas(512, 512, // Resolution
+		bitmap = new BitmapTextureAtlas(1024, 1024, // Resolution
 				TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		// for controller
      	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	fireControlTexture = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
+		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
+		
 		playTextureRegion.setFlippedHorizontal(true);
+		
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
 		bulletTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset
 		(bitmap, this, "Projectile.png",256,0);
+		BgTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(bitmap,
+				this, "city.jpg",512,0);
 		/////the pool
 		SpritePool = new SpritesPool(enemyTextureRegion);
 		BulletPool = new BulletsPool(bulletTexture);
@@ -115,14 +134,21 @@ public class andActivity extends BaseGameActivity {
 	sqBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 			fireControlTexture, this, "squarePS.png",384,0);
 		///////////////////////////////////////////////////////////
-	    mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
+	//////create sounds
+	 CreateSounds();
+	 CreateBGMusic();
+     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
 	}
 
 	@Override
 	public Scene onLoadScene() {
 		mEngine.registerUpdateHandler(new FPSLogger());
+		
 		mainScene = new Scene();
-		mainScene.setBackground(new ColorBackground(0.09f, 0.6f, 0.8f));
+		SBG = new Sprite(0, 0, mCamera.getWidth(),mCamera.getHeight(),
+				BgTextureRegion);
+		BG = new SpriteBackground(SBG);
+		mainScene.setBackground(BG);
 		AddThePlayer();
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
@@ -130,12 +156,44 @@ public class andActivity extends BaseGameActivity {
 		AddTheAnalogControler(physicsHandler);
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
+		
+		bgMusic.play();
 		return mainScene;
 	}
 
 	@Override
 	public void onLoadComplete() {
 		
+		
+	}
+	public void CreateSounds()
+	{
+		SoundFactory.setAssetBasePath("sounds/");
+		try {
+			shootSound = SoundFactory.createSoundFromAsset(mEngine.getSoundManager(),
+					this, "shoot.wav");
+		} catch (IllegalStateException e) {
+			
+			e.printStackTrace();
+		} catch (IOException e) {
+		
+			e.printStackTrace();
+		}
+	}
+	public void CreateBGMusic()
+	{
+		MusicFactory.setAssetBasePath("sounds/");
+		try {
+			bgMusic = MusicFactory.createMusicFromAsset(mEngine.getMusicManager(),
+					this, "bg_music.wav");
+			bgMusic.setLooping(true);
+		} catch (IllegalStateException e) {
+		
+			e.printStackTrace();
+		} catch (IOException e) {
+	
+			e.printStackTrace();
+		}
 		
 	}
     public void AddEnemey()
@@ -177,6 +235,7 @@ public class andActivity extends BaseGameActivity {
     	
     	Sprite bullet = BulletPool.obtainPoolItem();
     	bullet.setPosition(currentBulletX, currentBulletY);
+    	shootSound.play();
     	mainScene.attachChild(bullet);
     	int speed = 3;
     	MoveXModifier mov = new MoveXModifier(speed, bullet.getX(), mCamera.getWidth());
