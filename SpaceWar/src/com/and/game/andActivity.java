@@ -56,17 +56,22 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion oBtnTexture;
     private TextureRegion sqBtnTexture;
     private TextureRegion bulletTexture;
+    
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
+    private LinkedList bullets;
+    private LinkedList bulletsToBeAdded;
     private AnimatedSprite player;
-    private Sprite xBtn;
-    private Sprite trBtn;
-    private Sprite oBtn;
-    private Sprite sqBtn;
-    static int currentSpriteX = 0;
-    static int currentSpriteY = 0;
+    private Sprite xBtn, trBtn, oBtn, sqBtn;
+    
+    
+    static int   currentSpriteX = 0;
+    static int   currentSpriteY = 0;
+    static float currentBulletX = 0;
+    static float currentBulletY = 0;
     // the pool
     private SpritesPool SpritePool;
+    private BulletsPool BulletPool;
 	@Override
 	public Engine onLoadEngine() {
 		final Display display = getWindowManager().getDefaultDisplay();
@@ -94,6 +99,7 @@ public class andActivity extends BaseGameActivity {
 		(bitmap, this, "Projectile.png",256,0);
 		/////the pool
 		SpritePool = new SpritesPool(enemyTextureRegion);
+		BulletPool = new BulletsPool(bulletTexture);
 		
 		///////////////// for controller /////////
 		onScreenControlBase = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
@@ -143,6 +149,7 @@ public class andActivity extends BaseGameActivity {
     	currentSpriteX = x;
     	currentSpriteY = y;
     	Sprite target = SpritePool.obtainPoolItem();  // get Sprite from the pool
+    	target.setPosition(currentSpriteX,currentSpriteY);
     	mainScene.attachChild(target);
     	int minSpeed = 2;
     	int maxSpeed = 4;
@@ -152,13 +159,29 @@ public class andActivity extends BaseGameActivity {
     	enemiesToBeAdded.add(target);
     	
     }
+    public void removeSprite(Sprite toRemoved, Iterator it)
+    {
+    	SpritePool.recyclePoolItem(toRemoved);
+		it.remove();
+    }
+    public void removeBullet(Sprite toRemoved, Iterator it)
+    {
+    	BulletPool.recyclePoolItem(toRemoved);
+		it.remove();
+    }
+    
     public void AddBullet()
     {
-    	Sprite bullet = new Sprite(player.getX()+ player.getWidth(), player.getY()+ player.getHeight() / 2, bulletTexture.deepCopy());
+    	currentBulletX = player.getX() + player.getWidth();
+    	currentBulletY = player.getY() + player.getHeight() / 2;
+    	
+    	Sprite bullet = BulletPool.obtainPoolItem();
+    	bullet.setPosition(currentBulletX, currentBulletY);
     	mainScene.attachChild(bullet);
     	int speed = 3;
     	MoveXModifier mov = new MoveXModifier(speed, bullet.getX(), mCamera.getWidth());
     	bullet.registerEntityModifier(mov.deepCopy());
+    	bulletsToBeAdded.add(bullet);
     }
     // create new enemies periodically
     public void createEnemiesTimeHandler()
@@ -167,18 +190,17 @@ public class andActivity extends BaseGameActivity {
 		enemiesToBeAdded = new LinkedList();
     	TimerHandler spriteTimesHandler;
     	float delay = 1f;
-    	spriteTimesHandler = new TimerHandler(delay, true,new ITimerCallback() {
-			
+    	spriteTimesHandler = new TimerHandler(delay, true,new ITimerCallback() {	
 			@Override
 			public void onTimePassed(TimerHandler pTimerHandler) {
 				AddEnemey();
-				
 			}
 		});
     	getEngine().registerUpdateHandler(spriteTimesHandler);
     }
    
-    // detect when Sprite gets out of screen
+
+    // detect when Sprite gets out of screen (or collision detection)
     IUpdateHandler detectSpriteOutOfScreen = new IUpdateHandler() {
 		
 		@Override
@@ -188,15 +210,43 @@ public class andActivity extends BaseGameActivity {
 		public void onUpdate(float pSecondsElapsed) {
 			Iterator<Sprite> it = enemies.iterator();
 			Sprite enemy;
+			boolean hit = false;
 			while(it.hasNext())
 			{
 				enemy = it.next(); // enemy to be deleted of it is out of screen
 				if(enemy.getX() <= -enemy.getWidth())
 				{
-					SpritePool.recyclePoolItem(enemy);
-					it.remove();
+					removeSprite(enemy, it);
+					break;
 				}
+				Iterator<Sprite> bulletIt = bullets.iterator();
+				Sprite bullet;
+				while(bulletIt.hasNext())
+				{
+					bullet = bulletIt.next();
+					if(bullet.getX() >= mCamera.getWidth())
+					{
+						removeBullet(bullet, bulletIt);
+						continue;
+					}
+					if(enemy.collidesWith(bullet))
+					{
+						System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+						removeBullet(bullet, bulletIt);
+						hit = true;
+						break;
+					}
+				}
+				if(hit)
+				{
+					removeSprite(enemy, it);
+					hit = false;
+				}
+				
+				
 			}
+			bullets.addAll(bulletsToBeAdded);
+			bulletsToBeAdded.clear();
 			enemies.addAll(enemiesToBeAdded);
 			enemiesToBeAdded.clear();	
 		}
@@ -248,6 +298,8 @@ public class andActivity extends BaseGameActivity {
 	}
 	public void AddThePlayer()
 	{
+		bullets = new LinkedList();
+		bulletsToBeAdded = new LinkedList();
 		
 		int playerX = playTextureRegion.getWidth() / 2;
 		int playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
