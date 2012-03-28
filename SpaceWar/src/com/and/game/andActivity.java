@@ -34,6 +34,9 @@ import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.util.FPSLogger;
+import org.anddev.andengine.extension.input.touch.controller.MultiTouch;
+import org.anddev.andengine.extension.input.touch.controller.MultiTouchController;
+import org.anddev.andengine.extension.input.touch.exception.MultiTouchException;
 import org.anddev.andengine.input.touch.TouchEvent;
 import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
@@ -43,6 +46,8 @@ import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
 
 import android.view.Display;
+import android.widget.Toast;
+
 import javax.microedition.khronos.opengles.GL10;
 
 public class andActivity extends BaseGameActivity {
@@ -90,10 +95,27 @@ public class andActivity extends BaseGameActivity {
 	public Engine onLoadEngine() {
 		final Display display = getWindowManager().getDefaultDisplay();
 		mCamera = new Camera(0, 0, display.getWidth(), display.getHeight());
+		Engine engine = new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE,
+		         new RatioResolutionPolicy(mCamera.getWidth(), mCamera.getHeight()),
+		         mCamera).setNeedsMusic(true).setNeedsSound(true));
+		try {
+			if(MultiTouch.isSupported(this)) {
+				engine.setTouchController(new MultiTouchController());
+				if(MultiTouch.isSupportedDistinct(this)) {
+					Toast.makeText(this, "MultiTouch detected --> Drag multiple Sprites with multiple fingers!", Toast.LENGTH_LONG).show();
+				} else {
+					Toast.makeText(this, "MultiTouch detected --> Drag multiple Sprites with multiple fingers!\n\n(Your device might have problems to distinguish between separate fingers.)", Toast.LENGTH_LONG).show();
+				}
+			} else {
+				Toast.makeText(this, "Sorry your device does NOT support MultiTouch!\n\n(Falling back to SingleTouch.)", Toast.LENGTH_LONG).show();
+			}
+		} catch (final MultiTouchException e) {
+			Toast.makeText(this, "Sorry your Android Version does NOT support MultiTouch!\n\n(Falling back to SingleTouch.)", Toast.LENGTH_LONG).show();
+		}
 		
-		return new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE,
-				         new RatioResolutionPolicy(mCamera.getWidth(), mCamera.getHeight()),
-				         mCamera).setNeedsMusic(true).setNeedsSound(true));
+		
+        
+		return engine;
 	}
 	@Override
 	public void onLoadResources() {
@@ -166,6 +188,12 @@ public class andActivity extends BaseGameActivity {
 		
 		
 	}
+	
+	public void checkMultiTouch()
+	{
+		
+	}
+	
 	public void CreateSounds()
 	{
 		SoundFactory.setAssetBasePath("sounds/");
