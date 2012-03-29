@@ -112,9 +112,6 @@ public class andActivity extends BaseGameActivity {
 		} catch (final MultiTouchException e) {
 			Toast.makeText(this, "Sorry your Android Version does NOT support MultiTouch!\n\n(Falling back to SingleTouch.)", Toast.LENGTH_LONG).show();
 		}
-		
-		
-        
 		return engine;
 	}
 	@Override
@@ -122,9 +119,9 @@ public class andActivity extends BaseGameActivity {
 	
 		bitmap = new BitmapTextureAtlas(1024, 1024, // Resolution
 				TextureOptions.BILINEAR_PREMULTIPLYALPHA);
-		// for controller
+		// for controller		
      	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
-     	fireControlTexture = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	fireControlTexture  = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
@@ -179,6 +176,8 @@ public class andActivity extends BaseGameActivity {
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
 		this.mainScene.setTouchAreaBindingEnabled(true);
+		
+		
 		bgMusic.play();
 		return mainScene;
 	}
@@ -258,6 +257,9 @@ public class andActivity extends BaseGameActivity {
     
     public void AddBullet()
     {
+    	if (!Cool.shareCool().checkValidity()) 
+    		    return;
+
     	currentBulletX = player.getX() + player.getWidth();
     	currentBulletY = player.getY() + player.getHeight() / 2;
     	
