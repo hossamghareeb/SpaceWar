@@ -32,6 +32,7 @@ import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
+import org.anddev.andengine.entity.sprite.AnimatedSprite.IAnimationListener;
 import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.util.FPSLogger;
 import org.anddev.andengine.extension.input.touch.controller.MultiTouch;
@@ -56,10 +57,12 @@ public class andActivity extends BaseGameActivity {
 	private Scene mainScene;
     private BitmapTextureAtlas bitmap;
     private TiledTextureRegion playTextureRegion;
+    private TiledTextureRegion fireTextureRegion;
     private TextureRegion enemyTextureRegion;
     // controller
     private BitmapTextureAtlas onScreenControlTexture;
     private BitmapTextureAtlas fireControlTexture;
+    private BitmapTextureAtlas bombTexture;
     private TextureRegion onScreenControlBase;
     private TextureRegion onScreenControlKnob;
     private TextureRegion xBtnTexture;
@@ -74,11 +77,12 @@ public class andActivity extends BaseGameActivity {
     private LinkedList bullets;
     private LinkedList bulletsToBeAdded;
     private AnimatedSprite player;
-    
+    private AnimatedSprite bomb;
     private Sprite SBG;
 	private SpriteBackground BG;
 	
 	private Sound shootSound;
+	private Sound explosionSound;
 	private Music bgMusic;
     
     private Sprite xBtn, trBtn, oBtn, sqBtn;
@@ -122,11 +126,13 @@ public class andActivity extends BaseGameActivity {
 		// for controller		
      	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	fireControlTexture  = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	bombTexture  = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
-		
+		fireTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
+				bombTexture, this, "explosion.png", 0, 0,5,5);
 		playTextureRegion.setFlippedHorizontal(true);
 		
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
@@ -156,7 +162,7 @@ public class andActivity extends BaseGameActivity {
 	//////create sounds
 	 CreateSounds();
 	 CreateBGMusic();
-     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture);	
+     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture);	
 	}
 
 	@Override
@@ -176,7 +182,6 @@ public class andActivity extends BaseGameActivity {
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
 		this.mainScene.setTouchAreaBindingEnabled(true);
-		
 		
 		bgMusic.play();
 		return mainScene;
@@ -198,7 +203,11 @@ public class andActivity extends BaseGameActivity {
 		SoundFactory.setAssetBasePath("sounds/");
 		try {
 			shootSound = SoundFactory.createSoundFromAsset(mEngine.getSoundManager(),
-					this, "shoot.wav");
+					this, "shoot2.mp3");
+			explosionSound = SoundFactory.createSoundFromAsset(mEngine.getSoundManager(),
+					this, "explosion.mp3");
+			System.out.println(shootSound.getVolume());
+			System.out.println(explosionSound.getVolume());
 		} catch (IllegalStateException e) {
 			
 			e.printStackTrace();
@@ -212,7 +221,7 @@ public class andActivity extends BaseGameActivity {
 		MusicFactory.setAssetBasePath("sounds/");
 		try {
 			bgMusic = MusicFactory.createMusicFromAsset(mEngine.getMusicManager(),
-					this, "bg_music.wav");
+					this, "bg_music2.mp3");
 			bgMusic.setLooping(true);
 		} catch (IllegalStateException e) {
 		
@@ -251,6 +260,8 @@ public class andActivity extends BaseGameActivity {
     }
     public void removeBullet(Sprite toRemoved, Iterator it)
     {
+    	
+    	
     	BulletPool.recyclePoolItem(toRemoved);
 		it.remove();
     }
@@ -287,8 +298,6 @@ public class andActivity extends BaseGameActivity {
 		});
     	getEngine().registerUpdateHandler(spriteTimesHandler);
     }
-   
-
     // detect when Sprite gets out of screen (or collision detection)
     IUpdateHandler detectSpriteOutOfScreen = new IUpdateHandler() {
 		
@@ -321,6 +330,8 @@ public class andActivity extends BaseGameActivity {
 					if(enemy.collidesWith(bullet))
 					{
 						System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+						addBomb(bullet.getX(), bullet.getY());
+						explosionSound.play();
 						removeBullet(bullet, bulletIt);
 						hit = true;
 						break;
@@ -330,9 +341,7 @@ public class andActivity extends BaseGameActivity {
 				{
 					removeSprite(enemy, it);
 					hit = false;
-				}
-				
-				
+				}	
 			}
 			bullets.addAll(bulletsToBeAdded);
 			bulletsToBeAdded.clear();
@@ -383,7 +392,27 @@ public class andActivity extends BaseGameActivity {
         analogOnScreenControl.refreshControlKnobPosition();
 
         mainScene.setChildScene(analogOnScreenControl);
+	}
+	public void setBombPosition(float x, float y)
+	{
+		bomb.setPosition(x, y);
+	}
+	
+	public void addBomb(float x, float y)
+	{
+		bomb = new AnimatedSprite(x, y, fireTextureRegion.deepCopy()); // first position and will be set in collision
 		
+		bomb.animate(new long[] { 50, 50, 50, 50, 50
+								 ,50, 50, 50, 50, 50
+								 ,50, 50, 50, 50, 50
+								 ,50, 50, 50, 50, 50
+								 ,50, 50, 50, 50, 50}, 1, 25, 0, new IAnimationListener() {	
+									@Override
+									public void onAnimationEnd(AnimatedSprite pAnimatedSprite) {
+										mainScene.detachSelf();					
+									}
+								});
+		mainScene.attachChild(bomb);
 	}
 	public void AddThePlayer()
 	{

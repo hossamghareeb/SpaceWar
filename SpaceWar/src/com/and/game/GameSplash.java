@@ -4,11 +4,10 @@ import org.anddev.andengine.audio.music.MusicFactory;
 import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.source.AssetBitmapTextureAtlasSource;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.source.IBitmapTextureAtlasSource;
-import org.anddev.andengine.opengl.texture.source.BaseTextureAtlasSource;
 import org.anddev.andengine.ui.activity.BaseSplashActivity;
 
 import android.app.Activity;
-import android.media.MediaPlayer;
+
 
 public class GameSplash extends BaseSplashActivity {
     private static final int splash_duration = 6;
