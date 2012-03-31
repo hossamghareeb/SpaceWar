@@ -34,11 +34,14 @@ import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
 import org.anddev.andengine.entity.sprite.AnimatedSprite.IAnimationListener;
 import org.anddev.andengine.entity.sprite.Sprite;
+import org.anddev.andengine.entity.text.ChangeableText;
 import org.anddev.andengine.entity.util.FPSLogger;
 import org.anddev.andengine.extension.input.touch.controller.MultiTouch;
 import org.anddev.andengine.extension.input.touch.controller.MultiTouchController;
 import org.anddev.andengine.extension.input.touch.exception.MultiTouchException;
 import org.anddev.andengine.input.touch.TouchEvent;
+import org.anddev.andengine.opengl.font.Font;
+import org.anddev.andengine.opengl.font.FontFactory;
 import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlasTextureRegionFactory;
@@ -46,6 +49,8 @@ import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
 
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.view.Display;
 import android.widget.Toast;
 
@@ -58,6 +63,7 @@ public class andActivity extends BaseGameActivity {
     private BitmapTextureAtlas bitmap;
     private TiledTextureRegion playTextureRegion;
     private TiledTextureRegion fireTextureRegion;
+    private TiledTextureRegion playerExplosionTextureRegion;
     private TextureRegion enemyTextureRegion;
     // controller
     private BitmapTextureAtlas onScreenControlTexture;
@@ -71,13 +77,21 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion sqBtnTexture;
     private TextureRegion bulletTexture;
     private TextureRegion BgTextureRegion;
-    
+    //score
+    private BitmapTextureAtlas fontTexture;
+    private Font font;
+    private ChangeableText score;
+    private ChangeableText levelNumText;
+    private int level = 1;
+    private float currentScore = 0.0f;
+    //////////////
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
     private LinkedList bullets;
     private LinkedList bulletsToBeAdded;
     private AnimatedSprite player;
     private AnimatedSprite bomb;
+    private AnimatedSprite bombPlayer;
     private Sprite SBG;
 	private SpriteBackground BG;
 	
@@ -86,7 +100,7 @@ public class andActivity extends BaseGameActivity {
 	private Music bgMusic;
     
     private Sprite xBtn, trBtn, oBtn, sqBtn;
-    
+    private boolean isDead = false;
     
     static int   currentSpriteX = 0;
     static int   currentSpriteY = 0;
@@ -127,12 +141,18 @@ public class andActivity extends BaseGameActivity {
      	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	fireControlTexture  = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	bombTexture  = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	fontTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	FontFactory.setAssetBasePath("fonts/");
+		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.BLACK);
+     	//font = new Font(fontTexture, Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC), 20, true, Color.BLACK);
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
 		fireTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "explosion.png", 0, 0,5,5);
+		playerExplosionTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
+				bombTexture, this, "player-explosion.png", 512, 512,4,4);
 		playTextureRegion.setFlippedHorizontal(true);
 		
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
@@ -162,7 +182,8 @@ public class andActivity extends BaseGameActivity {
 	//////create sounds
 	 CreateSounds();
 	 CreateBGMusic();
-     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture);	
+     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture, fontTexture);
+     mEngine.getFontManager().loadFont(font);
 	}
 
 	@Override
@@ -175,8 +196,20 @@ public class andActivity extends BaseGameActivity {
 		BG = new SpriteBackground(SBG);
 		mainScene.setBackground(BG);
 		AddThePlayer();
+		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
+		score.setPosition(mCamera.getWidth()- score.getWidth()-30, 5);
+		levelNumText = new ChangeableText(3, 5, font, "Level "+ level);
+		mainScene.attachChild(score);
+		mainScene.attachChild(levelNumText);
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
+		
+		bombPlayer = new AnimatedSprite(0, 0, playerExplosionTextureRegion.deepCopy()); // first position and will be set in collision
+		mainScene.attachChild(bombPlayer);
+		bombPlayer.setVisible(false);
+		bomb = new AnimatedSprite(0, 0, fireTextureRegion.deepCopy()); // first position and will be set in collision
+		mainScene.attachChild(bomb);
+		bomb.setVisible(false);
 		AddTheFireButtons();
 		AddTheAnalogControler(physicsHandler);
 		createEnemiesTimeHandler(); // create random enemies 
@@ -193,11 +226,6 @@ public class andActivity extends BaseGameActivity {
 		
 	}
 	
-	public void checkMultiTouch()
-	{
-		
-	}
-	
 	public void CreateSounds()
 	{
 		SoundFactory.setAssetBasePath("sounds/");
@@ -206,8 +234,8 @@ public class andActivity extends BaseGameActivity {
 					this, "shoot2.mp3");
 			explosionSound = SoundFactory.createSoundFromAsset(mEngine.getSoundManager(),
 					this, "explosion.mp3");
-			System.out.println(shootSound.getVolume());
-			System.out.println(explosionSound.getVolume());
+			shootSound.setVolume(0.4f);
+			explosionSound.setVolume(1.5f);
 		} catch (IllegalStateException e) {
 			
 			e.printStackTrace();
@@ -223,6 +251,7 @@ public class andActivity extends BaseGameActivity {
 			bgMusic = MusicFactory.createMusicFromAsset(mEngine.getMusicManager(),
 					this, "bg_music2.mp3");
 			bgMusic.setLooping(true);
+			bgMusic.setVolume(2.5f);
 		} catch (IllegalStateException e) {
 		
 			e.printStackTrace();
@@ -260,8 +289,6 @@ public class andActivity extends BaseGameActivity {
     }
     public void removeBullet(Sprite toRemoved, Iterator it)
     {
-    	
-    	
     	BulletPool.recyclePoolItem(toRemoved);
 		it.remove();
     }
@@ -298,6 +325,15 @@ public class andActivity extends BaseGameActivity {
 		});
     	getEngine().registerUpdateHandler(spriteTimesHandler);
     }
+    public void effectOfCollision(Sprite toRemoved, Iterator it)
+    {
+    	addBomb(toRemoved.getX(), toRemoved.getY());
+		explosionSound.play();
+		removeBullet(toRemoved, it);
+		currentScore += 50.0;
+		score.setText("Score : "+ currentScore);
+    	
+    }
     // detect when Sprite gets out of screen (or collision detection)
     IUpdateHandler detectSpriteOutOfScreen = new IUpdateHandler() {
 		
@@ -309,12 +345,21 @@ public class andActivity extends BaseGameActivity {
 			Iterator<Sprite> it = enemies.iterator();
 			Sprite enemy;
 			boolean hit = false;
-			while(it.hasNext())
+			while(it.hasNext() && !isDead)
 			{
 				enemy = it.next(); // enemy to be deleted of it is out of screen
 				if(enemy.getX() <= -enemy.getWidth())
 				{
 					removeSprite(enemy, it);
+					break;
+				}
+				if(enemy.collidesWith(player))
+				{
+					player.setVisible(false);
+					isDead = true;
+					addBombPlayer(player.getX(), player.getY());
+					explosionSound.play();
+					
 					break;
 				}
 				Iterator<Sprite> bulletIt = bullets.iterator();
@@ -329,10 +374,7 @@ public class andActivity extends BaseGameActivity {
 					}
 					if(enemy.collidesWith(bullet))
 					{
-						System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-						addBomb(bullet.getX(), bullet.getY());
-						explosionSound.play();
-						removeBullet(bullet, bulletIt);
+						effectOfCollision(bullet, bulletIt);
 						hit = true;
 						break;
 					}
@@ -393,15 +435,12 @@ public class andActivity extends BaseGameActivity {
 
         mainScene.setChildScene(analogOnScreenControl);
 	}
-	public void setBombPosition(float x, float y)
-	{
-		bomb.setPosition(x, y);
-	}
 	
 	public void addBomb(float x, float y)
 	{
-		bomb = new AnimatedSprite(x, y, fireTextureRegion.deepCopy()); // first position and will be set in collision
 		
+		bomb.setVisible(true);
+		bomb.setPosition(x, y);
 		bomb.animate(new long[] { 50, 50, 50, 50, 50
 								 ,50, 50, 50, 50, 50
 								 ,50, 50, 50, 50, 50
@@ -409,10 +448,32 @@ public class andActivity extends BaseGameActivity {
 								 ,50, 50, 50, 50, 50}, 1, 25, 0, new IAnimationListener() {	
 									@Override
 									public void onAnimationEnd(AnimatedSprite pAnimatedSprite) {
-										mainScene.detachSelf();					
+										bomb.setVisible(false);					
 									}
 								});
-		mainScene.attachChild(bomb);
+		
+	}
+	public void addBombPlayer(float x, float y)
+	{
+//		bombPlayer = new AnimatedSprite(x, y, playerExplosionTextureRegion.deepCopy()); // first position and will be set in collision
+		bombPlayer.setVisible(true);
+		bombPlayer.setPosition(x, y);
+		bombPlayer.animate(new long[] { 50, 50, 50, 50
+								 ,50, 50, 50, 50
+								 ,50, 50, 50, 50
+								 ,50, 50, 50, 50 
+								 }, 1, 16, 0, new IAnimationListener() {	
+									@Override
+									public void onAnimationEnd(AnimatedSprite pAnimatedSprite) {
+										bombPlayer.setVisible(false);
+										float playerX = playTextureRegion.getWidth() / 2;
+										float playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
+										player.setPosition(playerX,playerY);
+										isDead = false;
+										player.setVisible(true);
+									}
+								});
+		
 	}
 	public void AddThePlayer()
 	{
@@ -445,8 +506,8 @@ public class andActivity extends BaseGameActivity {
                       runOnUpdateThread(new Runnable() {
                       @Override
                       public void run() {
-                    	 
-                          AddBullet();
+                    	 if(!isDead)
+                           AddBullet();
                       }
               });
                       return false;
