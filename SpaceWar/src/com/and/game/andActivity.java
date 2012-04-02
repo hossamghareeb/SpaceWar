@@ -28,6 +28,7 @@ import org.anddev.andengine.entity.modifier.MoveModifier;
 import org.anddev.andengine.entity.modifier.MoveXModifier;
 import org.anddev.andengine.entity.modifier.ScaleModifier;
 import org.anddev.andengine.entity.modifier.SequenceEntityModifier;
+import org.anddev.andengine.entity.scene.CameraScene;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.scene.background.SpriteBackground;
@@ -52,6 +53,7 @@ import org.anddev.andengine.ui.activity.BaseGameActivity;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Display;
+import android.view.KeyEvent;
 import android.widget.Toast;
 
 import javax.microedition.khronos.opengles.GL10;
@@ -65,6 +67,24 @@ public class andActivity extends BaseGameActivity {
     private TiledTextureRegion fireTextureRegion;
     private TiledTextureRegion playerExplosionTextureRegion;
     private TextureRegion enemyTextureRegion;
+   
+    ////pausing
+    private TextureRegion pauseTexture;
+    private CameraScene pauseScene;
+    private BitmapTextureAtlas pauseBtnsBitmap;
+    private TextureRegion p_goTexture; // pause
+    private TextureRegion p_restartTexture; // pause
+    private TextureRegion p_menuTexture; // pause
+    private TextureRegion p_SoundOnTexture; // pause
+    private TextureRegion p_SoundOffTexture; // pause
+    private Sprite go_btn;
+    private Sprite restart_btn;
+    private Sprite menu__btn;
+    private Sprite soundOff_btn;
+    private Sprite soundOn_btn;
+    private Sprite optionsHandle;
+    private boolean playSound = true;
+    /////////////
     // controller
     private BitmapTextureAtlas onScreenControlTexture;
     private BitmapTextureAtlas fireControlTexture;
@@ -77,12 +97,18 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion sqBtnTexture;
     private TextureRegion bulletTexture;
     private TextureRegion BgTextureRegion;
+    private AnalogOnScreenControl analogOnScreenControl;
     //score
     private BitmapTextureAtlas fontTexture;
     private Font font;
     private ChangeableText score;
     private ChangeableText levelNumText;
+    private AnimatedSprite imgLefts;
+    private ChangeableText leftsText;
+    private int lefts = 3;
     private int level = 1;
+    private Sprite startIcon;
+    private TextureRegion startIconTexture;
     private float currentScore = 0.0f;
     //////////////
     private LinkedList enemies;
@@ -134,18 +160,34 @@ public class andActivity extends BaseGameActivity {
 	}
 	@Override
 	public void onLoadResources() {
-	
+		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		bitmap = new BitmapTextureAtlas(1024, 1024, // Resolution
 				TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+		////////////Pause buttons/////
+		pauseBtnsBitmap = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+		p_goTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				pauseBtnsBitmap, this, "go.png", 128, 0);
+		
+		p_restartTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				pauseBtnsBitmap, this, "restart.png", 256, 0);
+		
+		p_menuTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				pauseBtnsBitmap, this, "home.png", 512, 0);
+		
+		p_SoundOnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				pauseBtnsBitmap, this, "Sound-on.png", 0, 256);
+		p_SoundOffTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				pauseBtnsBitmap, this, "Sound-off.png", 0, 512);
+		////////////////
 		// for controller		
-     	onScreenControlTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
-     	fireControlTexture  = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	onScreenControlTexture = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+     	fireControlTexture  = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	bombTexture  = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	fontTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	FontFactory.setAssetBasePath("fonts/");
 		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.BLACK);
      	//font = new Font(fontTexture, Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC), 20, true, Color.BLACK);
-		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
+		
 		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
@@ -154,6 +196,9 @@ public class andActivity extends BaseGameActivity {
 		playerExplosionTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "player-explosion.png", 512, 512,4,4);
 		playTextureRegion.setFlippedHorizontal(true);
+		
+		pauseTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				bitmap, this, "optionsHandle.png", 0, 512);
 		
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
@@ -178,32 +223,28 @@ public class andActivity extends BaseGameActivity {
 			fireControlTexture, this, "trPS.png",256,0);
 	sqBtnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 			fireControlTexture, this, "squarePS.png",384,0);
+	startIconTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(fireControlTexture, this, "start.png",512,0);
 		///////////////////////////////////////////////////////////
 	//////create sounds
 	 CreateSounds();
 	 CreateBGMusic();
-     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture, fontTexture);
+     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture, fontTexture,pauseBtnsBitmap);
      mEngine.getFontManager().loadFont(font);
 	}
 
 	@Override
 	public Scene onLoadScene() {
 		mEngine.registerUpdateHandler(new FPSLogger());
-		
 		mainScene = new Scene();
 		SBG = new Sprite(0, 0, mCamera.getWidth(),mCamera.getHeight(),
 				BgTextureRegion);
 		BG = new SpriteBackground(SBG);
 		mainScene.setBackground(BG);
 		AddThePlayer();
-		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
-		score.setPosition(mCamera.getWidth()- score.getWidth()-30, 5);
-		levelNumText = new ChangeableText(3, 5, font, "Level "+ level);
-		mainScene.attachChild(score);
-		mainScene.attachChild(levelNumText);
+		createToolbar();
+		createPauseScene();
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
-		
 		bombPlayer = new AnimatedSprite(0, 0, playerExplosionTextureRegion.deepCopy()); // first position and will be set in collision
 		mainScene.attachChild(bombPlayer);
 		bombPlayer.setVisible(false);
@@ -215,9 +256,41 @@ public class andActivity extends BaseGameActivity {
 		createEnemiesTimeHandler(); // create random enemies 
 		mainScene.registerUpdateHandler(detectSpriteOutOfScreen); // detect when outside
 		this.mainScene.setTouchAreaBindingEnabled(true);
-		
 		bgMusic.play();
 		return mainScene;
+	}
+	public void createToolbar()
+	{
+		imgLefts = new AnimatedSprite(mCamera.getWidth()/2 - 15, 5, 32, 32, playTextureRegion.deepCopy());
+		imgLefts.animate(new long[] { 10,10}, 1, 2, false);
+		imgLefts.stopAnimation();
+		mainScene.attachChild(imgLefts);
+		leftsText = new ChangeableText(imgLefts.getX() + 20, 5, font, " x " + lefts);
+		mainScene.attachChild(leftsText);
+		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
+		score.setPosition(mCamera.getWidth() - score.getWidth() - 40, 5);
+		levelNumText = new ChangeableText(3, 5, font, "Level " + level);
+		
+		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
+			
+		      @Override
+            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                    runOnUpdateThread(new Runnable() {
+                    @Override
+                    public void run() {     	  
+                         handlePausing();
+                    }
+            });
+                    return false;
+            }
+		};;
+		
+		mainScene.registerTouchArea(startIcon);
+		
+		mainScene.attachChild(startIcon);
+		mainScene.attachChild(score);
+		mainScene.attachChild(levelNumText);
 	}
 
 	@Override
@@ -303,7 +376,8 @@ public class andActivity extends BaseGameActivity {
     	
     	Sprite bullet = BulletPool.obtainPoolItem();
     	bullet.setPosition(currentBulletX, currentBulletY);
-    	shootSound.play();
+    	
+    	  if(playSound)shootSound.play();
     	mainScene.attachChild(bullet);
     	int speed = 3;
     	MoveXModifier mov = new MoveXModifier(speed, bullet.getX(), mCamera.getWidth());
@@ -328,7 +402,7 @@ public class andActivity extends BaseGameActivity {
     public void effectOfCollision(Sprite toRemoved, Iterator it)
     {
     	addBomb(toRemoved.getX(), toRemoved.getY());
-		explosionSound.play();
+		if(playSound)explosionSound.play();
 		removeBullet(toRemoved, it);
 		currentScore += 50.0;
 		score.setText("Score : "+ currentScore);
@@ -358,7 +432,7 @@ public class andActivity extends BaseGameActivity {
 					player.setVisible(false);
 					isDead = true;
 					addBombPlayer(player.getX(), player.getY());
-					explosionSound.play();
+					if(playSound)explosionSound.play();
 					
 					break;
 				}
@@ -423,7 +497,7 @@ public class andActivity extends BaseGameActivity {
 	
 			}
 		};
-		final AnalogOnScreenControl analogOnScreenControl = new AnalogOnScreenControl(0f, 
+		 analogOnScreenControl = new AnalogOnScreenControl(0f, 
 				mCamera.getHeight() - onScreenControlBase.getHeight(), mCamera, 
 				onScreenControlBase, onScreenControlKnob, 0.1f, 200, IanalogController);
 		analogOnScreenControl.getControlBase().setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
@@ -578,5 +652,162 @@ public class andActivity extends BaseGameActivity {
 	    mainScene.attachChild(sqBtn);
 		
 	}
+	/////////////////////////////////////// Pause Scene/////////////////////
+	public void createPauseScene()
+	{
+		pauseScene = new CameraScene(mCamera);
+	    optionsHandle = new Sprite( mCamera.getWidth()/2 - 150, 5,300,300, pauseTexture);
+		pauseScene.attachChild(optionsHandle);
+		pauseScene.setTouchAreaBindingEnabled(true);
+		createPauseScreenButtons();
+		//pauseScene.setBackgroundEnabled(false);
+	}
+	public void createPauseScreenButtons()
+	{
+		go_btn = new Sprite(optionsHandle.getX() + 50, 50, 70, 70, p_goTexture){
+			
+		      @Override
+            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+                    runOnUpdateThread(new Runnable() {
+                    @Override
+                    public void run() {     	  
+                        handlePausing();
+                    }
+            });
+                    return false;
+            }
+		};
+		pauseScene.registerTouchArea(go_btn);
+		pauseScene.attachChild(go_btn);
+		
+		restart_btn = new Sprite(go_btn.getX() + go_btn.getWidth() + 30, 50, 70, 70, p_restartTexture);
+//		{
+//			
+//		      @Override
+//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) 
+//		      {
+//                    runOnUpdateThread(new Runnable() {
+//                    @Override
+//                    public void run() {     	  
+//                         
+//                    }
+//            });
+//                    return false;
+//            }
+//		};
+		pauseScene.registerTouchArea(restart_btn);
+		pauseScene.attachChild(restart_btn);
+		menu__btn = new Sprite(go_btn.getX() + 10, 120, 70, 70, p_menuTexture);
+//		{
+//			
+//		      @Override
+//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+//                    runOnUpdateThread(new Runnable() {
+//                    @Override
+//                    public void run() {     	  
+//                        
+//                    }
+//            });
+//                    return false;
+//            }
+//		};
+		pauseScene.registerTouchArea(menu__btn);
+		pauseScene.attachChild(menu__btn);
+		soundOn_btn = new Sprite(menu__btn.getX() + menu__btn.getWidth()+30, 120, 70, 70, p_SoundOnTexture);
+//		{
+//			
+//		      @Override
+//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+//                    runOnUpdateThread(new Runnable() {
+//                    @Override
+//                    public void run() {     	  
+//                         bgMusic.stop();
+//                         playSound = false;
+//                         soundOff_btn.setVisible(true);
+//                         soundOn_btn.setVisible(false);
+//                    }
+//            });
+//                    return false;
+//            }
+//		};
+		pauseScene.registerTouchArea(soundOn_btn);
+		pauseScene.attachChild(soundOn_btn);
+		soundOff_btn = new Sprite(menu__btn.getX() + menu__btn.getWidth()+30, 120, 70, 70, p_SoundOffTexture);
+//		{
+//			
+//		      @Override
+//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+//                    runOnUpdateThread(new Runnable() {
+//                    @Override
+//                    public void run() {     	  
+//                    	   soundOff_btn.setVisible(false);
+//                           soundOn_btn.setVisible(true);
+//                           playSound = true;
+//                    }
+//            });
+//                    return false;
+//            }
+//		};
+		soundOff_btn.setVisible(false);
+		pauseScene.registerTouchArea(soundOff_btn);
+		pauseScene.attachChild(soundOff_btn);	
+		
+	}
+	public void pauseGame()
+	{
+		mainScene.setChildScene(pauseScene, false, true, true);
+		
+		mEngine.stop();
+	}
+	public void unpauseGame()
+	{
+		mainScene.clearChildScene();
+		mainScene.setChildScene(analogOnScreenControl);
+		mEngine.start();
+	}
+	public void pauseMusic()
+	{
+		if(bgMusic.isPlaying())
+			bgMusic.pause();
+	}
+	public void resumeMusic()
+	{
+		if(!bgMusic.isPlaying())
+			bgMusic.resume();
+	}
+	public void handlePausing()
+	{
+		if(mEngine.isRunning())
+		{
+			pauseMusic();
+			pauseGame();
+		}else{  // unPause
+			unpauseGame();
+			if(soundOn_btn.isVisible())
+				resumeMusic();
+		}
+	}
+	
+	@Override
+	public boolean onKeyDown(final int pKeyCode, final KeyEvent pEvent)
+	{
+		if(pKeyCode == KeyEvent.KEYCODE_BACK && pEvent.getAction() == KeyEvent.ACTION_DOWN)
+		{
+			handlePausing();
+			return false;
+		}
+		if((pKeyCode == KeyEvent.KEYCODE_MENU && pEvent.getAction() == KeyEvent.ACTION_DOWN) )
+		{
+			handlePausing();
+		}
+		return super.onKeyDown(pKeyCode, pEvent);
+	}
+	
+	/////////////////////////////////////////////////////////////////////////
   
 }
