@@ -33,6 +33,9 @@ import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
 import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.scene.menu.MenuScene;
+import org.anddev.andengine.entity.scene.menu.MenuScene.IOnMenuItemClickListener;
+import org.anddev.andengine.entity.scene.menu.item.IMenuItem;
+import org.anddev.andengine.entity.scene.menu.item.SpriteMenuItem;
 import org.anddev.andengine.entity.sprite.AnimatedSprite;
 import org.anddev.andengine.entity.sprite.AnimatedSprite.IAnimationListener;
 import org.anddev.andengine.entity.sprite.Sprite;
@@ -51,6 +54,9 @@ import org.anddev.andengine.opengl.texture.region.TextureRegion;
 import org.anddev.andengine.opengl.texture.region.TiledTextureRegion;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Display;
@@ -59,7 +65,7 @@ import android.widget.Toast;
 
 import javax.microedition.khronos.opengles.GL10;
 
-public class andActivity extends BaseGameActivity {
+public class andActivity extends BaseGameActivity implements IOnMenuItemClickListener{
 	//private
 	private Camera mCamera;
 	private Scene mainScene;
@@ -70,29 +76,16 @@ public class andActivity extends BaseGameActivity {
     private TextureRegion enemyTextureRegion;
    
     ////pausing
-    private TextureRegion pauseTexture;
-//    private CameraScene pauseScene;
-    private static final int MENU_QUIT_OK =  1;
-	private static final int MENU_QUIT_BACK = MENU_QUIT_OK + 1;
-	 private MenuScene mSubMenuScene;
-
-     private BitmapTextureAtlas mSubMenuTexture;
-     private TextureRegion mMenuOkTextureRegion;
-     private TextureRegion mMenuBackTextureRegion;
-    private Scene pauseScene;
-    private BitmapTextureAtlas pauseBtnsBitmap;
-    private TextureRegion p_goTexture; // pause
-    private TextureRegion p_restartTexture; // pause
-    private TextureRegion p_menuTexture; // pause
-    private TextureRegion p_SoundOnTexture; // pause
-    private TextureRegion p_SoundOffTexture; // pause
-    private Sprite go_btn;
-    private Sprite restart_btn;
-    private Sprite menu__btn;
-    private Sprite soundOff_btn;
-    private Sprite soundOn_btn;
-    private Sprite optionsHandle;
+	 private MenuScene menuScene;
+     private BitmapTextureAtlas menuTexture;
+     private TextureRegion menuResumeTextureRegion;
+     private TextureRegion menuRestartTextureRegion;
+     private TextureRegion menuWeaponsTextureRegion;
+     private TextureRegion menuSettingTextureRegion;
+     private TextureRegion menuMainTextureRegion;
+     private AlertDialog alertSound;
     private boolean playSound = true;
+    private boolean selectedSound = true;
     private boolean paused = false;
     /////////////
     // controller
@@ -174,20 +167,17 @@ public class andActivity extends BaseGameActivity {
 		bitmap = new BitmapTextureAtlas(1024, 1024, // Resolution
 				TextureOptions.BILINEAR_PREMULTIPLYALPHA);
 		////////////Pause buttons/////
-		pauseBtnsBitmap = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
-		p_goTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				pauseBtnsBitmap, this, "go.png", 128, 0);
-		
-		p_restartTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				pauseBtnsBitmap, this, "restart.png", 256, 0);
-		
-		p_menuTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				pauseBtnsBitmap, this, "home.png", 512, 0);
-		
-		p_SoundOnTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				pauseBtnsBitmap, this, "Sound-on.png", 0, 256);
-		p_SoundOffTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				pauseBtnsBitmap, this, "Sound-off.png", 0, 512);
+		menuTexture = new BitmapTextureAtlas(512, 512, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
+		menuResumeTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset
+		                          (menuTexture, this, "resume.png", 0, 0);
+		menuRestartTextureRegion =  BitmapTextureAtlasTextureRegionFactory.createFromAsset
+        						  (menuTexture, this, "restart.png", 0, 70);
+		menuWeaponsTextureRegion =   BitmapTextureAtlasTextureRegionFactory.createFromAsset
+		  						   (menuTexture, this, "weapons.png", 0, 140);
+		menuSettingTextureRegion =   BitmapTextureAtlasTextureRegionFactory.createFromAsset
+		   						   (menuTexture, this, "setting.png", 0, 210);
+		menuMainTextureRegion =   BitmapTextureAtlasTextureRegionFactory.createFromAsset
+		   (menuTexture, this, "main.png", 0, 280);
 		////////////////
 		// for controller		
      	onScreenControlTexture = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
@@ -196,20 +186,13 @@ public class andActivity extends BaseGameActivity {
      	fontTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	FontFactory.setAssetBasePath("fonts/");
 		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.BLACK);
-     	//font = new Font(fontTexture, Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC), 20, true, Color.BLACK);
-		
-		
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
 		fireTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "explosion.png", 0, 0,5,5);
 		playerExplosionTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "player-explosion.png", 512, 512,4,4);
-		playTextureRegion.setFlippedHorizontal(true);
-		
-		pauseTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
-				bitmap, this, "optionsHandle.png", 0, 512);
-		
+		playTextureRegion.setFlippedHorizontal(true);	
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
 		bulletTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset
@@ -238,7 +221,8 @@ public class andActivity extends BaseGameActivity {
 	//////create sounds
 	 CreateSounds();
 	 CreateBGMusic();
-     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,fireControlTexture,bombTexture, fontTexture,pauseBtnsBitmap);
+     mEngine.getTextureManager().loadTextures(bitmap, onScreenControlTexture,
+    		 fireControlTexture,bombTexture, fontTexture,menuTexture);
      mEngine.getFontManager().loadFont(font);
 	}
 
@@ -252,7 +236,7 @@ public class andActivity extends BaseGameActivity {
 		mainScene.setBackground(BG);
 		AddThePlayer();
 		createToolbar();
-		createPauseScene();
+		createMenuScene();
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
 		bombPlayer = new AnimatedSprite(0, 0, playerExplosionTextureRegion.deepCopy()); // first position and will be set in collision
@@ -279,8 +263,7 @@ public class andActivity extends BaseGameActivity {
 		mainScene.attachChild(leftsText);
 		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
 		score.setPosition(mCamera.getWidth() - score.getWidth() - 40, 5);
-		levelNumText = new ChangeableText(3, 5, font, "Level " + level);
-		
+		levelNumText = new ChangeableText(3, 5, font, "Level " + level);		
 		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
 			
 		      @Override
@@ -289,7 +272,7 @@ public class andActivity extends BaseGameActivity {
                     runOnUpdateThread(new Runnable() {
                     @Override
                     public void run() {     	  
-                         handlePausing();
+                         
                     }
             });
                     return false;
@@ -440,7 +423,7 @@ public class andActivity extends BaseGameActivity {
 					removeSprite(enemy, it);
 					break;
 				}
-				if(enemy.collidesWith(player) && !paused)
+				if(enemy.collidesWith(player) )
 				{
 					player.setVisible(false);
 					isDead = true;
@@ -459,7 +442,7 @@ public class andActivity extends BaseGameActivity {
 						removeBullet(bullet, bulletIt);
 						continue;
 					}
-					if(enemy.collidesWith(bullet)&&!paused)
+					if(enemy.collidesWith(bullet))
 					{
 						effectOfCollision(bullet, bulletIt);
 						hit = true;
@@ -487,7 +470,7 @@ public class andActivity extends BaseGameActivity {
 			@Override
 			public void onControlChange(BaseOnScreenControl pBaseOnScreenControl,
 					float pValueX, float pValueY) {
-			    if(!paused){
+
 			    	
 					if(pValueX < 0 && player.getX() <= 5)
 					{
@@ -506,9 +489,7 @@ public class andActivity extends BaseGameActivity {
 						pValueX = 0;
 					}
 					physicsHandler.setVelocity(pValueX * 200, pValueY * 200);
-			    }
-			    else
-			    	physicsHandler.setVelocity(0, 0);
+			   
 			}
 			@Override
 			public void onControlClick(AnalogOnScreenControl pAnalogOnScreenControl) {
@@ -598,7 +579,7 @@ public class andActivity extends BaseGameActivity {
                       runOnUpdateThread(new Runnable() {
                       @Override
                       public void run() {
-                    	 if(!isDead && !paused)
+                    	 if(!isDead )
                            AddBullet();
                       }
               });
@@ -671,151 +652,44 @@ public class andActivity extends BaseGameActivity {
 		
 	}
 	/////////////////////////////////////// Pause Scene/////////////////////
-	public void createPauseScene()
+	public void createMenuScene()
 	{
-		pauseScene = new CameraScene(mCamera); 
-		pauseScene.setBackgroundEnabled(false);
-	    optionsHandle = new Sprite( mCamera.getWidth()/2 - 150, 5,300,300, pauseTexture);
-	    pauseScene.attachChild(optionsHandle);
-//	    go_btn = new Sprite(optionsHandle.getX() + 50, 50, 70, 70, p_goTexture){
-//			
-//		      @Override
-//          public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-//        		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-//                  runOnUpdateThread(new Runnable() {
-//                  @Override
-//                  public void run() {
-//                      handlePausing();
-//                  }
-//          });
-//                  return false;
-//          }
-//		};
-//		//mainScene.registerTouchArea(go_btn);
-//		pauseScene.registerTouchArea(go_btn);
-//		restart_btn = new Sprite(go_btn.getX() + go_btn.getWidth() + 30, 50, 70, 70, p_restartTexture)
-//		{
-//			
-//		      @Override
-//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) 
-//		      {
-//                    runOnUpdateThread(new Runnable() {
-//                    @Override
-//                    public void run() {     	  
-//                         
-//                    }
-//            });
-//                    return false;
-//            }
-//		};
-//		pauseScene.registerTouchArea(restart_btn);
-//		menu__btn = new Sprite(go_btn.getX() + 10, 120, 70, 70, p_menuTexture)
-//		{
-//			
-//		      @Override
-//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-//                    runOnUpdateThread(new Runnable() {
-//                    @Override
-//                    public void run() {     	  
-//                        
-//                    }
-//            });
-//                    return false;
-//            }
-//		};
-//		pauseScene.registerTouchArea(menu__btn);
-//		soundOn_btn = new Sprite(menu__btn.getX() + menu__btn.getWidth()+30, 120, 70, 70, p_SoundOnTexture)
-//		{
-//			
-//		      @Override
-//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-//                    runOnUpdateThread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                    	System.out.println("loooooooooooz");
-//                         bgMusic.stop();
-//                         playSound = false;
-//                         pauseScene.attachChild(soundOff_btn);
-//                         pauseScene.registerTouchArea(soundOff_btn);
-//                         pauseScene.detachChild(soundOn_btn);
-//                         pauseScene.unregisterTouchArea(soundOn_btn);
-//                    }
-//            });
-//                    return false;
-//            }
-//		};
-//		pauseScene.registerTouchArea(soundOn_btn);
-//		
-//		soundOff_btn = new Sprite(menu__btn.getX() + menu__btn.getWidth()+30, 120, 70, 70, p_SoundOffTexture)
-//		{
-//			
-//		      @Override
-//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-//                    runOnUpdateThread(new Runnable() {
-//                    @Override
-//                    public void run() {     	  
-//                    	pauseScene.attachChild(soundOn_btn);
-//                    	pauseScene.registerTouchArea(soundOn_btn);
-//                    	pauseScene.detachChild(soundOff_btn);
-//                    	 pauseScene.unregisterTouchArea(soundOff_btn);
-//                        playSound = true;
-//                    }
-//            });
-//                    return false;
-//            }
-//		};
-//		
-//		//soundOff_btn.setVisible(false);
-//		
-//		
-	
-//		pauseScene.setTouchAreaBindingEnabled(true);
-//		pauseScene.setBackgroundEnabled(false);
+		menuScene = new MenuScene(mCamera);
+		final SpriteMenuItem resumeMenuItem = new SpriteMenuItem(GameConstants.MENU_RESUME, menuResumeTextureRegion);
+		resumeMenuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		menuScene.addMenuItem(resumeMenuItem);
+		final SpriteMenuItem restartMenuItem = new SpriteMenuItem(GameConstants.MENU_RESTART, menuRestartTextureRegion);
+		restartMenuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);		
+		menuScene.addMenuItem(restartMenuItem);
+		final SpriteMenuItem weaponsMenuItem = new SpriteMenuItem(GameConstants.MENU_WEAPONS, menuWeaponsTextureRegion);
+		restartMenuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);		
+		menuScene.addMenuItem(weaponsMenuItem);
+		final SpriteMenuItem settingMenuItem = new SpriteMenuItem(GameConstants.MENU_SETTING, menuSettingTextureRegion);
+		restartMenuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);		
+		menuScene.addMenuItem(settingMenuItem);
+		final SpriteMenuItem mainMenuItem = new SpriteMenuItem(GameConstants.MENU_MAIN, menuMainTextureRegion);
+		restartMenuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);		
+		menuScene.addMenuItem(mainMenuItem);
+		menuScene.buildAnimations();
+		menuScene.setBackgroundEnabled(false);
+		menuScene.setOnMenuItemClickListener(this);
 	}
-//	public void createPauseScreenButtons()
-//	{
-//		pauseScene.attachChild(go_btn);
-//		pauseScene.attachChild(restart_btn);	
-//		pauseScene.attachChild(menu__btn);
-//		if(playSound)
-//		{
-//			System.out.println("sound on added");
-//			pauseScene.attachChild(soundOn_btn);
-//		}
-//		else
-//			pauseScene.attachChild(soundOff_btn);	
-//	}
-//	public void releasePauseScreenButtons()
-//	{
-//		pauseScene.detachChild(go_btn);
-//		pauseScene.detachChild(restart_btn);	
-//		pauseScene.detachChild(menu__btn);
-//		try{
-//			pauseScene.detachChild(soundOn_btn);
-//			pauseScene.detachChild(soundOff_btn);
-//		System.out.println("looooooooooooZZZZZZZ11");
-//		}catch(Exception e)
-//		{
-//			System.out.println("looooooooooooZZZZZZZ");
-//		}
-//	}
+
 	
 	public void pauseGame()
 	{
-		mainScene.setChildScene(pauseScene, false, true, true);		
-		mEngine.stop();
+		paused = true;
+		mainScene.setChildScene(menuScene, false, true, true);
+		pauseMusic();
 		
 	}
 	public void unpauseGame()
 	{
+		paused = false;
+		resumeMusic();
 		mainScene.clearChildScene();
-		System.out.println("looooooooooooZZZZZZZ222");
-     	mainScene.setChildScene(analogOnScreenControl);
-		mEngine.start();
+		mainScene.setChildScene(analogOnScreenControl);
+		menuScene.reset();
 	}
 	public void pauseMusic()
 	{
@@ -824,20 +698,20 @@ public class andActivity extends BaseGameActivity {
 	}
 	public void resumeMusic()
 	{
-		if(!bgMusic.isPlaying())
-			bgMusic.resume();
-	}
-	public void handlePausing()
-	{
-		if(mEngine.isRunning())
+		if(!selectedSound)
 		{
-			pauseMusic();
-			pauseGame();
-		}else{  // unPause
-			unpauseGame();
-			if(playSound)
-				resumeMusic();
+			bgMusic.pause();
+			playSound = selectedSound;
+			return;
 		}
+		
+		if(playSound)
+			bgMusic.resume();
+		else
+			bgMusic.play();
+		
+		playSound = selectedSound;
+		
 	}
 	
 	@Override
@@ -845,15 +719,84 @@ public class andActivity extends BaseGameActivity {
 	{
 		if(pKeyCode == KeyEvent.KEYCODE_BACK && pEvent.getAction() == KeyEvent.ACTION_DOWN)
 		{
-			// r u sure to go to main menu?
 			return false;
 			
 		}
 		if((pKeyCode == KeyEvent.KEYCODE_MENU && pEvent.getAction() == KeyEvent.ACTION_DOWN) )
 		{
-			handlePausing();
+			if(menuScene.hasParent())
+			{
+				menuScene.back();
+				mainScene.setChildScene(analogOnScreenControl);
+				
+			}
+			else{
+				pauseGame();
+				
+				}
+			return true;
 		}
-		return true;
+		else
+		   return super.onKeyDown(pKeyCode, pEvent);
+	}
+	@Override
+	public boolean onMenuItemClicked(final MenuScene pMenuScene, final IMenuItem pMenuItem, final float pMenuItemLocalX, final float pMenuItemLocalY) {
+		switch(pMenuItem.getID()) {
+			case GameConstants.MENU_RESUME:
+				unpauseGame();
+				return true;
+			case GameConstants.MENU_MAIN:
+				askForExit();
+				return true;
+			case GameConstants.MENU_SETTING:
+				 showAlertSound();
+				 return true;
+			default:
+				return false;
+		}
+	}
+	public void showAlertSound()
+	{
+		final CharSequence[] options = {"Sound ON", "Sound OFF"};
+		AlertDialog.Builder alt = new AlertDialog.Builder(this);
+		alt.setIcon(R.drawable.sound);
+		alt.setTitle("Sound Setting");
+		int i;
+		if(playSound) i = 0; else i = 1; 
+		alt.setSingleChoiceItems(options, i, new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface arg0, int item) {
+			    if(item == 0) selectedSound = true; 
+			    else
+			    	selectedSound = false;
+			    	
+			 alertSound.cancel();   
+			    	
+			}
+		});
+		alertSound = alt.create();
+		alertSound.show();
+	}
+	
+	public void askForExit()
+	{
+		new AlertDialog.Builder(this).setTitle("Exit !!")
+		.setMessage("Are you sure you wanna Exit?")
+		.setPositiveButton("Yes", new OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				finish();
+			}
+		})
+		.setNegativeButton("No", new OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {				
+			}
+		}).show();
+		
 	}
 	
 	/////////////////////////////////////////////////////////////////////////
