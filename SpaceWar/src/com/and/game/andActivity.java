@@ -112,7 +112,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
     private int level = 1;
     private Sprite startIcon;
     private TextureRegion startIconTexture;
-    private float currentScore = 0.0f;
+    private int currentScore = 0;
     //////////////
     private LinkedList enemies;
     private LinkedList enemiesToBeAdded;
@@ -185,7 +185,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
      	bombTexture  = new BitmapTextureAtlas(1024, 1024, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	fontTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	FontFactory.setAssetBasePath("fonts/");
-		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.BLACK);
+		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.WHITE);
 		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bitmap, this, "helicopter.png", 0, 0,2,2);
 		fireTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
@@ -198,7 +198,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 		bulletTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset
 		(bitmap, this, "Projectile.png",256,0);
 		BgTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(bitmap,
-				this, "city.jpg",512,0);
+				this, "space05.jpg",512,0);
 		/////the pool
 		SpritePool = new SpritesPool(enemyTextureRegion);
 		BulletPool = new BulletsPool(bulletTexture);
@@ -258,30 +258,31 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 		imgLefts = new AnimatedSprite(mCamera.getWidth()/2 - 15, 5, 32, 32, playTextureRegion.deepCopy());
 		imgLefts.animate(new long[] { 10,10}, 1, 2, false);
 		imgLefts.stopAnimation();
-		mainScene.attachChild(imgLefts);
+		
 		leftsText = new ChangeableText(imgLefts.getX() + 20, 5, font, " x " + lefts);
+		mainScene.attachChild(imgLefts);
 		mainScene.attachChild(leftsText);
 		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
 		score.setPosition(mCamera.getWidth() - score.getWidth() - 40, 5);
 		levelNumText = new ChangeableText(3, 5, font, "Level " + level);		
-		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
-			
-		      @Override
-            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
-          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
-                    runOnUpdateThread(new Runnable() {
-                    @Override
-                    public void run() {     	  
-                         
-                    }
-            });
-                    return false;
-            }
-		};;
+//		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
+//			
+//		      @Override
+//            public boolean onAreaTouched(final TouchEvent pSceneTouchEvent,
+//          		  final float pTouchAreaLocalX, final float pTouchAreaLocalY) {
+//                    runOnUpdateThread(new Runnable() {
+//                    @Override
+//                    public void run() {     	  
+//                         
+//                    }
+//            });
+//                    return false;
+//            }
+//		};;
 		
-		mainScene.registerTouchArea(startIcon);
+		//mainScene.registerTouchArea(startIcon);
 		
-		mainScene.attachChild(startIcon);
+		//mainScene.attachChild(startIcon);
 		mainScene.attachChild(score);
 		mainScene.attachChild(levelNumText);
 	}
@@ -713,6 +714,31 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 		playSound = selectedSound;
 		
 	}
+	public void restartGame()
+	{
+		runOnUpdateThread(new Runnable() {
+			
+			@Override
+			public void run() {
+				mainScene.detachChildren();
+				mainScene.attachChild(imgLefts);
+				mainScene.attachChild(leftsText);
+				mainScene.attachChild(score);
+				mainScene.attachChild(levelNumText);
+				float playerX = playTextureRegion.getWidth() / 2;
+				float playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
+				player.setPosition(playerX,playerY);
+				mainScene.attachChild(player);
+				
+			}
+		});
+		currentScore = 0;
+		score.setText("Score:" +currentScore);
+		enemies.clear();
+	    enemiesToBeAdded.clear();
+	    bullets.clear();
+	    bulletsToBeAdded.clear();
+	}
 	
 	@Override
 	public boolean onKeyDown(final int pKeyCode, final KeyEvent pEvent)
@@ -750,6 +776,10 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 				return true;
 			case GameConstants.MENU_SETTING:
 				 showAlertSound();
+				 return true;
+			case GameConstants.MENU_RESTART:
+				 unpauseGame();
+				 restartGame();
 				 return true;
 			default:
 				return false;
