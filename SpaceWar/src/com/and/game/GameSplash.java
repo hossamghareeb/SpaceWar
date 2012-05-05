@@ -48,7 +48,7 @@ public class GameSplash extends BaseSplashActivity {
 	@Override
 	protected Class<? extends Activity> getFollowUpActivity() {
 		
-		return andActivity.class;
+		return MainMenu.class;
 	}
 
 }

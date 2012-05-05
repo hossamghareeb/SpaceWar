@@ -56,9 +56,11 @@ import org.anddev.andengine.ui.activity.BaseGameActivity;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.DialogInterface.OnClickListener;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.Handler;
 import android.view.Display;
 import android.view.KeyEvent;
 import android.widget.Toast;
@@ -70,8 +72,11 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 	private Camera mCamera;
 	private Scene mainScene;
     private BitmapTextureAtlas bitmap;
-    private TiledTextureRegion playTextureRegion;
+    private TextureRegion playTextureRegion;
     private TiledTextureRegion fireTextureRegion;
+    private TiledTextureRegion player_boosterTextureRegion;
+    private TiledTextureRegion player_booster_upTextureRegion;
+    private TiledTextureRegion player_booster_downTextureRegion;
     private TiledTextureRegion playerExplosionTextureRegion;
     private TextureRegion enemyTextureRegion;
    
@@ -118,7 +123,10 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
     private LinkedList enemiesToBeAdded;
     private LinkedList bullets;
     private LinkedList bulletsToBeAdded;
-    private AnimatedSprite player;
+    private Sprite player;
+    private AnimatedSprite player_back_booster;
+    private AnimatedSprite player_up_booster;
+    private AnimatedSprite player_down_booster;
     private AnimatedSprite bomb;
     private AnimatedSprite bombPlayer;
     private Sprite SBG;
@@ -130,6 +138,8 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
     
     private Sprite xBtn, trBtn, oBtn, sqBtn;
     private boolean isDead = false;
+    
+    private Handler handler;
     
     static int   currentSpriteX = 0;
     static int   currentSpriteY = 0;
@@ -186,17 +196,24 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
      	fontTexture = new BitmapTextureAtlas(256, 256, TextureOptions.BILINEAR_PREMULTIPLYALPHA);
      	FontFactory.setAssetBasePath("fonts/");
 		font = FontFactory.createFromAsset(fontTexture, this, "4STAFF__.TTF", 30, true, Color.WHITE);
-		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
-				bitmap, this, "helicopter.png", 0, 0,2,2);
+		playTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
+				bitmap, this, "player_spaceship.png", 0, 0);
+		
 		fireTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "explosion.png", 0, 0,5,5);
 		playerExplosionTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
 				bombTexture, this, "player-explosion.png", 512, 512,4,4);
-		playTextureRegion.setFlippedHorizontal(true);	
+		//playTextureRegion.setFlippedHorizontal(true);	
 		enemyTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(
 				bitmap, this, "Target.png", 128, 0);
+		player_boosterTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
+				bitmap, this, "booster2.png", 150, 0,1,7);
+		player_booster_upTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
+				bitmap, this, "boosterup.png", 0, 100,7,1);
+		player_booster_downTextureRegion = BitmapTextureAtlasTextureRegionFactory.createTiledFromAsset(
+				bitmap, this, "boosterdown.png", 0, 300,7,1);
 		bulletTexture = BitmapTextureAtlasTextureRegionFactory.createFromAsset
-		(bitmap, this, "Projectile.png",256,0);
+		(bitmap, this, "Projectile.png",400,0);
 		BgTextureRegion = BitmapTextureAtlasTextureRegionFactory.createFromAsset(bitmap,
 				this, "space05.jpg",512,0);
 		/////the pool
@@ -234,12 +251,15 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 				BgTextureRegion);
 		BG = new SpriteBackground(SBG);
 		mainScene.setBackground(BG);
+		handler = new Handler();// used to go to other activities
 		AddThePlayer();
 		createToolbar();
 		createMenuScene();
 		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
 		player.registerUpdateHandler(physicsHandler);
+		
 		bombPlayer = new AnimatedSprite(0, 0, playerExplosionTextureRegion.deepCopy()); // first position and will be set in collision
+		
 		mainScene.attachChild(bombPlayer);
 		bombPlayer.setVisible(false);
 		bomb = new AnimatedSprite(0, 0, fireTextureRegion.deepCopy()); // first position and will be set in collision
@@ -255,15 +275,15 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 	}
 	public void createToolbar()
 	{
-		imgLefts = new AnimatedSprite(mCamera.getWidth()/2 - 15, 5, 32, 32, playTextureRegion.deepCopy());
-		imgLefts.animate(new long[] { 10,10}, 1, 2, false);
-		imgLefts.stopAnimation();
+//		imgLefts = new AnimatedSprite(mCamera.getWidth()/2 - 15, 5, 32, 32, playTextureRegion.deepCopy());
+//		imgLefts.animate(new long[] { 10,10}, 1, 2, false);
+//		imgLefts.stopAnimation();
 		
-		leftsText = new ChangeableText(imgLefts.getX() + 20, 5, font, " x " + lefts);
-		mainScene.attachChild(imgLefts);
-		mainScene.attachChild(leftsText);
+	//	leftsText = new ChangeableText(imgLefts.getX() + 20, 5, font, " x " + lefts);
+		//mainScene.attachChild(imgLefts);
+	//	mainScene.attachChild(leftsText);
 		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
-		score.setPosition(mCamera.getWidth() - score.getWidth() - 40, 5);
+		score.setPosition(mCamera.getWidth() - score.getWidth() - 100, 5);
 		levelNumText = new ChangeableText(3, 5, font, "Level " + level);		
 //		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
 //			
@@ -366,7 +386,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
     	if (!Cool.shareCool().checkValidity()) 
     		    return;
 
-    	currentBulletX = player.getX() + player.getWidth();
+    	currentBulletX = player.getX() + player.getWidth()-5;
     	currentBulletY = player.getY() + player.getHeight() / 2;
     	
     	Sprite bullet = BulletPool.obtainPoolItem();
@@ -472,6 +492,24 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 			public void onControlChange(BaseOnScreenControl pBaseOnScreenControl,
 					float pValueX, float pValueY) {
 
+				
+			        if(pValueX == 0.0 && pValueY == 0.0)
+			        {
+			        	player_up_booster.setVisible(false);
+			        	player_down_booster.setVisible(false);
+			        	
+			        }
+			        if(pValueY > 0)
+			        {
+			        	player_up_booster.setVisible(true);
+			        	player_down_booster.setVisible(false);
+			        }
+			        	
+			        if(pValueY < 0)
+			        {
+			        	player_up_booster.setVisible(false);
+			        	player_down_booster.setVisible(true);
+			        }
 			    	
 					if(pValueX < 0 && player.getX() <= 5)
 					{
@@ -489,13 +527,15 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 					{
 						pValueX = 0;
 					}
-					physicsHandler.setVelocity(pValueX * 200, pValueY * 200);
+					physicsHandler.setVelocity(pValueX * 250, pValueY * 250);
 			   
 			}
 			@Override
 			public void onControlClick(AnalogOnScreenControl pAnalogOnScreenControl) {
-	
+	                    
 			}
+			
+	
 		};
 		 analogOnScreenControl = new AnalogOnScreenControl(0f, 
 				mCamera.getHeight() - onScreenControlBase.getHeight(), mCamera, 
@@ -556,11 +596,20 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 		
 		int playerX = playTextureRegion.getWidth() / 2;
 		int playerY = (int)(mCamera.getHeight() - playTextureRegion.getHeight()) / 2;
-		player = new AnimatedSprite(playerX, playerY, playTextureRegion);
-		player.animate(new long[] { 100, 100 }, 1, 2, true);
-		final PhysicsHandler physicsHandler = new PhysicsHandler(player);
-		player.registerUpdateHandler(physicsHandler);		
+		player = new Sprite(playerX, playerY, playTextureRegion);
+		player_back_booster = new AnimatedSprite(-30, 5, player_boosterTextureRegion);
+    	player_back_booster.animate(new long[] { 100, 100,100,100,100,100,100 }, 1, 7, true);
+    	player_up_booster = new AnimatedSprite(35, 20, player_booster_upTextureRegion);
+    	player_up_booster.animate(new long[] { 100, 100,100,100,100,100,100 }, 1, 7, true);
+    	player_down_booster = new AnimatedSprite(35, -5, player_booster_downTextureRegion);
+    	player_down_booster.animate(new long[] { 100, 100,100,100,100,100,100 }, 1, 7, true);
+    	player_up_booster.setVisible(false);
+    	player_down_booster.setVisible(false);
+    	player.attachChild(player_back_booster);
+    	player.attachChild(player_up_booster,1);
+    	player.attachChild(player_down_booster);
 		mainScene.attachChild(player);
+		
 	}
 	public void AddTheFireButtons()
 	{		
@@ -602,7 +651,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
                       runOnUpdateThread(new Runnable() {
                       @Override
                       public void run() {     	  
-                           player.stopAnimation();
+                         //  player.stopAnimation();
                       }
               });
                       return false;
@@ -622,7 +671,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
                       runOnUpdateThread(new Runnable() {
                       @Override
                       public void run() {     	  
-                           player.stopAnimation();
+                          // player.stopAnimation();
                       }
               });
                       return false;
@@ -642,7 +691,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
                       runOnUpdateThread(new Runnable() {
                       @Override
                       public void run() {     	  
-                           player.stopAnimation();
+                          // player.stopAnimation();
                       }
               });
                       return false;
@@ -808,26 +857,32 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 		alertSound = alt.create();
 		alertSound.show();
 	}
-	
-	public void askForExit()
-	{
-		new AlertDialog.Builder(this).setTitle("Exit !!")
-		.setMessage("Are you sure you wanna Exit?")
-		.setPositiveButton("Yes", new OnClickListener() {
-			
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-				finish();
-			}
-		})
-		.setNegativeButton("No", new OnClickListener() {
-			
-			@Override
-			public void onClick(DialogInterface dialog, int which) {				
-			}
-		}).show();
-		
-	}
+	 public void askForExit()
+	 	{
+	 		new AlertDialog.Builder(this).setTitle("Confirmation !!")
+	 		.setMessage("Are you sure you want to go to Main Menu?")
+	 		.setPositiveButton("Yes", new OnClickListener() {
+	 			
+	 			@Override
+	 			public void onClick(DialogInterface dialog, int which) {
+	 				handler.postDelayed(GoToMainMenu, 1000);
+	 			}
+	 		})
+	 		.setNegativeButton("No", new OnClickListener() {
+	 			
+	 			@Override
+	 			public void onClick(DialogInterface dialog, int which) {				
+	 			}
+	 		}).show();
+	 		
+	 	}
+	 private Runnable GoToMainMenu = new Runnable() {
+	        public void run() {
+	    		Intent myIntent = new Intent(andActivity.this, MainMenu.class);
+	    		startActivity(myIntent);
+	    		finish();
+	        }
+	     };
 	
 	/////////////////////////////////////////////////////////////////////////
   
