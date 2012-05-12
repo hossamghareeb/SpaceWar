@@ -30,7 +30,9 @@ import org.anddev.andengine.entity.modifier.ScaleModifier;
 import org.anddev.andengine.entity.modifier.SequenceEntityModifier;
 import org.anddev.andengine.entity.scene.CameraScene;
 import org.anddev.andengine.entity.scene.Scene;
+import org.anddev.andengine.entity.scene.background.AutoParallaxBackground;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
+import org.anddev.andengine.entity.scene.background.ParallaxBackground.ParallaxEntity;
 import org.anddev.andengine.entity.scene.background.SpriteBackground;
 import org.anddev.andengine.entity.scene.menu.MenuScene;
 import org.anddev.andengine.entity.scene.menu.MenuScene.IOnMenuItemClickListener;
@@ -247,10 +249,15 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 	public Scene onLoadScene() {
 		mEngine.registerUpdateHandler(new FPSLogger());
 		mainScene = new Scene();
-		SBG = new Sprite(0, 0, mCamera.getWidth(),mCamera.getHeight(),
-				BgTextureRegion);
-		BG = new SpriteBackground(SBG);
-		mainScene.setBackground(BG);
+		// moving background
+		final AutoParallaxBackground autoParallex = new AutoParallaxBackground(0, 0, 0, 3);
+		autoParallex.attachParallaxEntity(new ParallaxEntity(-25f, new Sprite(0, mCamera.getHeight()- BgTextureRegion.getHeight(), BgTextureRegion)));
+		mainScene.setBackground(autoParallex);
+		/////////////////////
+//		SBG = new Sprite(0, 0, mCamera.getWidth(),mCamera.getHeight(),
+//				BgTextureRegion);
+//		BG = new SpriteBackground(SBG);
+//		mainScene.setBackground(BG);
 		handler = new Handler();// used to go to other activities
 		AddThePlayer();
 		createToolbar();
@@ -282,7 +289,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 	//	leftsText = new ChangeableText(imgLefts.getX() + 20, 5, font, " x " + lefts);
 		//mainScene.attachChild(imgLefts);
 	//	mainScene.attachChild(leftsText);
-		score = new ChangeableText(0, 5, font, "Score : "+currentScore);
+		score = new ChangeableText(0, 5, font, "Score : "+currentScore,1000);
 		score.setPosition(mCamera.getWidth() - score.getWidth() - 100, 5);
 		levelNumText = new ChangeableText(3, 5, font, "Level " + level);		
 //		startIcon = new Sprite(levelNumText.getWidth() + 25, 5, 40, 40,startIconTexture ){
@@ -838,7 +845,7 @@ public class andActivity extends BaseGameActivity implements IOnMenuItemClickLis
 	{
 		final CharSequence[] options = {"Sound ON", "Sound OFF"};
 		AlertDialog.Builder alt = new AlertDialog.Builder(this);
-		alt.setIcon(R.drawable.sound);
+		//alt.setIcon(R.drawable.sound);
 		alt.setTitle("Sound Setting");
 		int i;
 		if(playSound) i = 0; else i = 1; 
